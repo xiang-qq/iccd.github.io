@@ -86,8 +86,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="introduce.html">第一章 机器列表、架构图、交易路由</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">第二章 应急预案</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#eiss">4.1 查询EISS处理时间</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ttjy">4.2 ttjy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#iccd">2.1 ICCD配合主机实切步骤</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#iccdeissmq">2.2 ICCD与EISS之间MQ异常应急方案</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="eiss.html">第三章 EISS</a></li>
@@ -157,27 +157,256 @@
             
   <div class="section" id="id1">
 <h1>第二章 应急预案<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="eiss">
-<h2>4.1 查询EISS处理时间<a class="headerlink" href="#eiss" title="Permalink to this headline">¶</a></h2>
-<p>查询条件：某个时间范围内，报BCSS有超时，可查询EISS处理总时长
-查询语句:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">select</span> <span class="n">F2</span><span class="p">,</span> <span class="n">tran_time</span><span class="p">,</span><span class="n">tran_code</span><span class="p">,</span> <span class="n">extract</span><span class="p">(</span><span class="n">second</span> <span class="kn">from</span> <span class="nn">END</span><span class="o">-</span><span class="n">BEGIN</span><span class="p">),</span> <span class="n">F39</span><span class="p">,</span> <span class="n">ap_ret_code</span><span class="p">,</span> <span class="n">ap_ret_msg</span>
-<span class="kn">from</span>
-<span class="p">(</span><span class="n">select</span> <span class="n">F2</span><span class="p">,</span> <span class="n">tran_time</span><span class="p">,</span><span class="n">tran_code</span><span class="p">,</span> <span class="n">F39</span><span class="p">,</span> <span class="n">ap_ret_code</span><span class="p">,</span> <span class="n">ap_ret_msg</span><span class="p">,</span>
-<span class="n">to_timestamp</span><span class="p">(</span><span class="n">SEND_TIME</span><span class="p">,</span><span class="s1">&#39;hh24:mi:ss.ff&#39;</span><span class="p">)</span> <span class="n">SEND</span><span class="p">,</span>  <span class="n">to_timestamp</span><span class="p">(</span><span class="n">BEGIN_TIME</span><span class="p">,</span><span class="s1">&#39;hh24:mi:ss.ff&#39;</span><span class="p">)</span> <span class="n">BEGIN</span><span class="p">,</span>
-<span class="n">to_timestamp</span><span class="p">(</span><span class="n">END_TIME</span><span class="p">,</span><span class="s1">&#39;hh24:mi:ss.ff&#39;</span><span class="p">)</span> <span class="n">END</span><span class="p">,</span><span class="n">to_timestamp</span><span class="p">(</span><span class="n">RECV_TIME</span><span class="p">,</span><span class="s1">&#39;hh24:mi:ss.ff&#39;</span><span class="p">)</span> <span class="n">RECV</span>
-<span class="n">FROM</span>
-<span class="n">BCSS01</span><span class="o">.</span><span class="n">BCSS_JOURNAL_SW</span> <span class="n">partition</span><span class="p">(</span><span class="n">P_20180719</span><span class="p">)</span>
-<span class="n">where</span>
-<span class="n">substr</span><span class="p">(</span><span class="n">tran_time</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span><span class="o">&gt;</span><span class="s1">&#39;123000&#39;</span> <span class="ow">and</span>
-<span class="n">substr</span><span class="p">(</span><span class="n">tran_time</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span><span class="o">&lt;</span><span class="s1">&#39;125200&#39;</span> <span class="ow">and</span>
-<span class="n">F2</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;6259063493613759&#39;</span><span class="p">,</span> <span class="s1">&#39;6259073348244593&#39;</span><span class="p">);</span>
+<div class="section" id="iccd">
+<h2>2.1 ICCD配合主机实切步骤<a class="headerlink" href="#iccd" title="Permalink to this headline">¶</a></h2>
+<p>主机升级停机，ICCD配合步骤:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>1、ICCD需要在主机下CP1C/CP1E （11.3.2.3/5）之前执行
+登录(生产IP为21.123.50.86）
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“禁止写消息队列”，弹出的界面中选择“PQM_ICHOST _1”。
+第五步：在弹出的界面中选择 禁止写(生产IP为21.123.50.90）服务器中中的带”EISS_L”和“EISS”的MQ
+第六步：此时将(生产IP为21.123.50.90）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.90）中的带”EISS_L”和“EISS”的队列的MQ队列信息，状态为 INHIBITED
+
+登录(生产IP为21.123.50.88）
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“禁止写消息队列”，弹出的界面中选择“PQM_ICHOST _3”。
+第五步：在弹出的界面中选择 禁止写(生产IP为21.123.50.92）服务器中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.92）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.92）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 INHIBITED
+
+ACCS系统节点&quot;CIP1AT11&quot;之前执行
+登录（生产IP为21.123.50.86）
+第一步：以icpst01登录（生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;禁止写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_1和PQM_ICSWT_L_1&quot;.
+第五步：在弹出的界面中选择 禁止写（生产IP为21.123.50.86）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.86）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.86)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.86）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为INHIBITED
+
+ACCS系统节点&quot;CIP1AT31&quot; 之前执行
+登录（生产IP为21.123.50.88）
+第一步：以icpst01登录（生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;禁止写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_3和PQM_ICSWT_L_3&quot;.
+第五步：在弹出的界面中选择 禁止写（生产IP为21.123.50.88）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.88）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.88)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.88）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为INHIBITED
+
+ICCD需要在主机启CP1C/CP1E （11.3.2.3/5）之后执行
+登录(生产IP为21.123.50.86）
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“允许写消息队列”，弹出的界面中选择“PQM_ICHOST _1”。
+第五步：在弹出的界面中选择 允许写(生产IP为21.123.50.90）服务器中中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.90）服务器中的MQ消息队列允许写。
+查看队列状态为允许写状态
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.90）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 ALLOWED
+
+登录(生产IP为21.123.50.88）
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“允许写消息队列”，弹出的界面中选择“PQM_ICHOST _3”。
+第五步：在弹出的界面中选择 允许写(生产IP为21.123.50.92）服务器中中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.92）服务器中的MQ消息队列允许写。
+查看队列状态为允许写状态
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.92）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 ALLOWED&quot;
+
+ACCS系统升级的节点&quot;CIP1AT11&quot; 漂移到其他节点之后，ICCD恢复与此节点的交易传输
+登录（生产IP为21.123.50.86）
+第一步：以icpst01登录（生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;允许写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_1和PQM_ICSWT_L_1&quot;.
+第五步：在弹出的界面中选择 允许写（生产IP为21.123.50.86）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.86）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.86)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.86）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为ALLOWED
+
+ACCS系统升级的节点&quot;CIP1AT31&quot; 漂移到其他节点之后，ICCD恢复与此节点的交易传输
+登录（生产IP为21.123.50.88）
+第一步：以icpst01登录（生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;允许写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_3和PQM_ICSWT_L_3&quot;.
+第五步：在弹出的界面中选择 允许写（生产IP为21.123.50.88）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.88）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.88)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.88）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为ALLOWED
+
+
+-------------------------------------------------------------------------------------------------------------------------
+
+2、ICCD需要在主机下CP1D/CP1F （11.3.2.4/6）之前执行
+登录(生产IP为21.123.50.86）
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“禁止写消息队列”，弹出的界面中选择“PQM_ICHOST _2”。
+第五步：在弹出的界面中选择 禁止写(生产IP为21.123.50.91）服务器中中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.91）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.91）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 INHIBITED
+
+登录(生产IP为21.123.50.88）
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“禁止写消息队列”，弹出的界面中选择“PQM_ICHOST _4”。
+第五步：在弹出的界面中选择 禁止写(生产IP为21.123.50.93）服务器中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.93）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.93）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 INHIBITED
+
+ACCS系统节点&quot;CIP1AT21&quot; (第一次隔离下机）之前执行
+登录（生产IP为21.123.50.87）
+第一步：以icpst01登录（生产IP为21.123.50.87）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;禁止写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_2和PQM_ICSWT_L_2&quot;.
+第五步：在弹出的界面中选择 禁止写（生产IP为21.123.50.87）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.87）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.87)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.87）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为INHIBITED
+
+ACCS系统节点&quot;CIP1AT41&quot; (第一次隔离下机）之前执行
+登录（生产IP为21.123.50.89）
+第一步：以icpst01登录（生产IP为21.123.50.89）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;禁止写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_4和PQM_ICSWT_L_4&quot;.
+第五步：在弹出的界面中选择 禁止写（生产IP为21.123.50.89）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.89）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.89)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.89）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为INHIBITED
+
+ICCD需要在主机启CP1D/CP1F （11.3.2.4/6）之后执行
+登录(生产IP为21.123.50.86）
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“允许写消息队列”，弹出的界面中选择“PQM_ICHOST _2”。
+第五步：在弹出的界面中选择 允许写(生产IP为21.123.50.91）服务器中中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.91）服务器中的MQ消息队列允许写。
+查看队列状态为允许写状态
+第一步：以icpst01登陆(生产IP为21.123.50.86）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.91）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 ALLOWED
+
+登录(生产IP为21.123.50.88）
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“允许写消息队列”，弹出的界面中选择“PQM_ICHOST _4”。
+第五步：在弹出的界面中选择 允许写(生产IP为21.123.50.93）服务器中中的带“EISS_L”和”EISS”的MQ
+第六步：此时将(生产IP为21.123.50.93）服务器中的MQ消息队列允许写。
+查看队列状态为允许写状态
+第一步：以icpst01登陆(生产IP为21.123.50.88）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码
+第三步：在出现的界面中选择“消息队列”
+第四步：在出现的界面中选择“应用队列信息”
+第五步：在出现的界面中找到(生产IP为21.123.50.93）中的带“EISS_L”和”EISS”的队列的MQ队列信息，状态为 ALLOWED&quot;
+
+ACCS系统升级的节点&quot;CIP1AT21&quot; 漂移到其他节点之后，ICCD恢复与此节点的交易传输
+登录（生产IP为21.123.50.87）
+第一步：以icpst01登录（生产IP为21.123.50.87）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;允许写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_2和PQM_ICSWT_L_2&quot;.
+第五步：在弹出的界面中选择 允许写（生产IP为21.123.50.87）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.87）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.87)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.87）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为ALLOWED
+
+ACCS系统升级的节点&quot;CIP1AT41&quot; 漂移到其他节点之后，ICCD恢复与此节点的交易传输
+登录（生产IP为21.123.50.89）
+第一步：以icpst01登录（生产IP为21.123.50.89）服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：再出现的界面中选择&quot;允许写消息队列&quot;，弹出的界面中依次选择&quot;PQM_ICSWT_D_4和PQM_ICSWT_L_4&quot;.
+第五步：在弹出的界面中选择 允许写（生产IP为21.123.50.89）服务器中带&quot;ICPS.SWT*&quot;的MQ
+第六步：此时将（生产IP为21.123.50.89）服务器中的MQ消息队列禁止写。
+查看队列状态为禁止写状态
+第一步：以icpst01登录（生产IP为21.123.50.89)服务器，执行admwin命令
+第二步：在出现的界面中输入柜员ID和密码。
+第三步：再出现的界面中选择&quot;消息队列&quot;
+第四步：在出现的界面中选择&quot;应用队列信息&quot;
+第五步：再出现的界面中找到（生产IP为21.123.50.89）中的带&quot;ICPS.SWT*&quot;的队列的MQ队列信息，状态为ALLOWED
 </pre></div>
 </div>
 </div>
-<div class="section" id="ttjy">
-<h2>4.2 ttjy<a class="headerlink" href="#ttjy" title="Permalink to this headline">¶</a></h2>
-<p>bhkhkhg。</p>
+<div class="section" id="iccdeissmq">
+<h2>2.2 ICCD与EISS之间MQ异常应急方案<a class="headerlink" href="#iccdeissmq" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><p>ICCD与EISS之间MQ异常应急方案:</p>
+<img alt="_images/eiss_mq.PNG" src="_images/eiss_mq.PNG" />
+</div></blockquote>
 </div>
 </div>
 
